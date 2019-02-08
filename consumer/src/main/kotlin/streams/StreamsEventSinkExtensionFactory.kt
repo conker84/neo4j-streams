@@ -10,6 +10,9 @@ import org.neo4j.kernel.lifecycle.Lifecycle
 import org.neo4j.kernel.lifecycle.LifecycleAdapter
 import streams.procedures.StreamsSinkProcedures
 import streams.utils.Neo4jUtils
+import streams.utils.Neo4jUtils.isWriteableInstance
+import streams.utils.Neo4jUtils.readInTxWithGraphDatabaseService
+import streams.utils.Neo4jUtils.writeInTxWithGraphDatabaseService
 import streams.utils.StreamsUtils
 
 class StreamsEventSinkExtensionFactory : KernelExtensionFactory<StreamsEventSinkExtensionFactory.Dependencies>("Streams.Consumer") {
@@ -41,21 +44,38 @@ class StreamsEventSinkExtensionFactory : KernelExtensionFactory<StreamsEventSink
                     override fun available() {
                         streamsLog.info("Initialising the Streams Sink module")
                         val streamsSinkConfiguration = StreamsSinkConfiguration.from(configuration)
-                        val streamsTopicService = StreamsTopicService(db, streamsSinkConfiguration.topics)
+                        val streamsTopicService = StreamsTopicService(db)
+                        writeInTxWithGraphDatabaseService(db) {
+                            streamsTopicService.clearAll()
+                            streamsTopicService.setAllCypherTemplates(streamsSinkConfiguration.cypherTopics)
+                            streamsTopicService.setAllCDCTopics(streamsSinkConfiguration.cdcTopics)
+                            it.success()
+                        }
                         val streamsQueryExecution = StreamsEventSinkQueryExecution(streamsTopicService, db, logService.getUserLog(StreamsEventSinkQueryExecution::class.java))
 
+                        val log = logService.getUserLog(StreamsEventSinkFactory::class.java)
                         // Create and start the Sink
                         eventSink = StreamsEventSinkFactory
                                 .getStreamsEventSink(configuration,
                                         streamsQueryExecution,
                                         streamsTopicService,
-                                        logService.getUserLog(StreamsEventSinkFactory::class.java))
+                                        log)
+
+                        val allTopics = streamsSinkConfiguration.cypherTopics.keys + streamsSinkConfiguration.cdcTopics
+                        allTopics.forEach {
+                            eventSink.getEventSinkRepository().add(it, configuration.raw, log)
+                        }
+
                         eventSink.start()
-                        if (Neo4jUtils.isWriteableInstance(db)) {
-                            if (streamsLog.isDebugEnabled) {
-                                streamsLog.debug("Subscribed topics with queries: $${streamsTopicService.getAll()}")
-                            } else {
-                                streamsLog.info("Subscribed topics: ${streamsTopicService.getTopics()}")
+
+                        if (isWriteableInstance(db)) {
+                            readInTxWithGraphDatabaseService(db) {
+                                if (streamsLog.isDebugEnabled) {
+                                    streamsLog.debug("Subscribed topics with Cypher queries: ${streamsTopicService.getAllCypherTemplates()}")
+                                    streamsLog.debug("Subscribed topics with CDC configuration: ${streamsTopicService.getAllCDCTopics()}")
+                                } else {
+                                    streamsLog.info("Subscribed topics: ${streamsTopicService.getTopics()}")
+                                }
                             }
                         }
 
@@ -63,12 +83,14 @@ class StreamsEventSinkExtensionFactory : KernelExtensionFactory<StreamsEventSink
                         StreamsSinkProcedures.registerStreamsSinkConfiguration(streamsSinkConfiguration)
                         StreamsSinkProcedures.registerStreamsEventConsumerFactory(eventSink.getEventConsumerFactory())
                         StreamsSinkProcedures.registerStreamsEventSinkConfigMapper(eventSink.getEventSinkConfigMapper())
+                        StreamsSinkProcedures.registerStreamsEventSinkRepository(eventSink.getEventSinkRepository())
+                        StreamsSinkProcedures.registerStreamsTopicService(streamsTopicService)
                         streamsLog.info("Streams Sink module initialised")
                     }
 
                 })
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.properties.graphDatabase.beginTx()StackTrace()
                 streamsLog.error("Error initializing the streaming sink", e)
             }
         }

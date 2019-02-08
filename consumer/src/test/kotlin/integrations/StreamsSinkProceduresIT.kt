@@ -1,5 +1,7 @@
 package integrations
 
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.clients.producer.ProducerRecord
@@ -11,6 +13,7 @@ import org.neo4j.kernel.impl.proc.Procedures
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.TestGraphDatabaseFactory
 import org.testcontainers.containers.KafkaContainer
+import streams.ConsumerStatus
 import streams.procedures.StreamsSinkProcedures
 import streams.serialization.JSONUtils
 import java.util.*
@@ -59,6 +62,9 @@ class StreamsSinkProceduresIT {
     private val dataProperties = mapOf("prop1" to "foo", "bar" to 1)
     private val data = mapOf("id" to 1, "properties" to dataProperties)
 
+    private val cypherTopic = "shouldWriteCypherQuery"
+    private val cdcTopic = "cdc-topic"
+
 
     @Before
     fun setUp() {
@@ -66,7 +72,8 @@ class StreamsSinkProceduresIT {
                 .newImpermanentDatabaseBuilder()
                 .setConfig("kafka.bootstrap.servers", kafka.bootstrapServers)
         if (!testName.methodName.endsWith(EXCLUDE_LOAD_TOPIC_METHOD_SUFFIX)) {
-            graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.shouldWriteCypherQuery", cypherQueryTemplate)
+            graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.$cypherTopic", cypherQueryTemplate)
+            graphDatabaseBuilder.setConfig("streams.sink.topic.cdc", cdcTopic)
         }
         if (testName.methodName.endsWith(EXCLUDE_SINK_METHOD_SUFFIX)) {
             graphDatabaseBuilder.setConfig("streams.sink.enabled", "false")
@@ -166,7 +173,65 @@ class StreamsSinkProceduresIT {
         val searchResultMap = searchResult.next()
         assertTrue { searchResultMap.containsKey("count") }
         assertEquals(3L, searchResultMap["count"])
+    }
 
+    @Test
+    fun shouldShowTheStatus() {
+        db.beginTx().use {
+            val result = db.execute("CALL streams.consume.status")
+            assertTrue { result.hasNext() }
+            var resultRow = result.next()
+            assertEquals(cypherTopic, resultRow.getValue("topic"))
+            assertEquals(cypherQueryTemplate, resultRow.getValue("query"))
+            assertEquals(ConsumerStatus.RUNNING.toString(), resultRow.getValue("status"))
+            assertTrue { result.hasNext() }
+            resultRow = result.next()
+            assertEquals(cdcTopic, resultRow.getValue("topic"))
+            assertEquals("CDC", resultRow.getValue("query"))
+            assertEquals(ConsumerStatus.RUNNING.toString(), resultRow.getValue("status"))
+            assertFalse { result.hasNext() }
+        }
+    }
+
+    @Test
+    fun shouldKillOneConsumer() {
+        db.beginTx().use {
+            db.execute("CALL streams.consume.remove({topic})", mapOf("topic" to cdcTopic))
+            val result = db.execute("CALL streams.consume.status")
+            assertTrue { result.hasNext() }
+            var resultRow = result.next()
+            assertEquals(cypherTopic, resultRow.getValue("topic"))
+            assertEquals(cypherQueryTemplate, resultRow.getValue("query"))
+            assertEquals(ConsumerStatus.RUNNING.toString(), resultRow.getValue("status"))
+            assertFalse { result.hasNext() }
+        }
+    }
+
+    @Test
+    fun shouldAddOneCypherConsumer() {
+        db.beginTx().use {
+            val myTopic = "my-topic"
+            val myQuery = "WITH event CREATE (n:FromPayload) SET n += event"
+            db.execute("CALL streams.consume.add.cypher({topic}, {query})",
+                    mapOf("topic" to myTopic, "query" to myQuery))
+            val result = db.execute("CALL streams.consume.status")
+            assertTrue { result.hasNext() }
+            var resultRow = result.next()
+            assertEquals(cypherTopic, resultRow.getValue("topic"))
+            assertEquals(cypherQueryTemplate, resultRow.getValue("query"))
+            assertEquals(ConsumerStatus.RUNNING.toString(), resultRow.getValue("status"))
+            assertTrue { result.hasNext() }
+            resultRow = result.next()
+            assertEquals(cdcTopic, resultRow.getValue("topic"))
+            assertEquals("CDC", resultRow.getValue("query"))
+            assertEquals(ConsumerStatus.RUNNING.toString(), resultRow.getValue("status"))
+            assertTrue { result.hasNext() }
+            resultRow = result.next()
+            assertEquals(myTopic, resultRow.getValue("topic"))
+            assertEquals(myQuery, resultRow.getValue("query"))
+            assertEquals(ConsumerStatus.RUNNING.toString(), resultRow.getValue("status"))
+            assertFalse { result.hasNext() }
+        }
     }
 
 }

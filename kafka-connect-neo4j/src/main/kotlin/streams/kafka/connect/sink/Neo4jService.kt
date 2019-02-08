@@ -12,11 +12,12 @@ import org.neo4j.driver.v1.Driver
 import org.neo4j.driver.v1.GraphDatabase
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import streams.service.StreamsSinkService
 import streams.utils.StreamsUtils
 import java.util.concurrent.TimeUnit
 
 
-class Neo4jService(private val config: Neo4jSinkConnectorConfig) {
+class Neo4jService(private val config: Neo4jSinkConnectorConfig): StreamsSinkService() {
 
     private val converter = ValueConverter()
 
@@ -63,10 +64,19 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig) {
         driver.close()
     }
 
-    private fun write(topic: String, records: List<SinkRecord>) {
+
+    override fun isCDCTopic(topic: String): Boolean {
+        return config.cdcTopics.contains(topic)
+    }
+
+    override fun getCypherTemplate(topic: String): String? {
+        return "${StreamsUtils.UNWIND} ${config.cypherTopics[topic]}"
+    }
+
+    override fun write(query: String, events: Collection<Any>) {
         val session = driver.session()
-        val query = "${StreamsUtils.UNWIND} ${config.topicMap[topic]}"
-        val data = mapOf<String, Any>("events" to records.map { converter.convert(it.value()) })
+        val records = events as List<Any>
+        val data = mapOf<String, Any>("events" to records.map { converter.convert(it) })
         session.writeTransaction {
             try {
                 it.run(query, data)
@@ -85,12 +95,12 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig) {
         session.close()
     }
 
-    suspend fun writeData(data: Map<String, List<List<SinkRecord>>>) = coroutineScope {
+    suspend fun writeData(data: Map<String, List<List<Any>>>) = coroutineScope {
         val timeout = config.batchTimeout
         val ticker = ticker(timeout)
         val deferredList = data
                 .flatMap { (topic, records) ->
-                    records.map { async { write(topic, it) } }
+                    records.map { async { writeForTopic(topic, it) } }
                 }
         whileSelect {
             ticker.onReceive {
@@ -106,7 +116,4 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig) {
             }
         }
     }
-
-
-
 }

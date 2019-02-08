@@ -1,6 +1,7 @@
 package streams.utils
 
 import org.neo4j.graphdb.QueryExecutionException
+import org.neo4j.graphdb.Transaction
 import org.neo4j.kernel.impl.logging.LogService
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import java.lang.reflect.InvocationTargetException
@@ -31,5 +32,20 @@ object Neo4jUtils {
     fun getLogService(db: GraphDatabaseAPI): LogService {
         return db.dependencyResolver
                 .resolveDependency(LogService::class.java)
+    }
+
+    fun <T> writeInTxWithGraphDatabaseService(db: GraphDatabaseAPI, action: (Transaction) -> T): T? {
+        if (!isWriteableInstance(db)) {
+            return null
+        }
+        return db.beginTx().use {
+            action(it)
+        }
+    }
+
+    fun <T> readInTxWithGraphDatabaseService(db: GraphDatabaseAPI, action: (Transaction) -> T): T? {
+        return db.beginTx().use {
+            action(it)
+        }
     }
 }

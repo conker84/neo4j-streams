@@ -8,6 +8,8 @@ abstract class StreamsEventSink(private val config: Config,
                                 private val streamsTopicService: StreamsTopicService,
                                 private val log: Log) {
 
+    private var streamsEventSinkRepository: StreamsEventConsumerRepository? = null
+
     abstract fun stop()
 
     abstract fun start()
@@ -16,7 +18,16 @@ abstract class StreamsEventSink(private val config: Config,
 
     abstract fun getEventSinkConfigMapper(): StreamsEventSinkConfigMapper
 
+    fun getEventSinkRepository(): StreamsEventConsumerRepository {
+        if (streamsEventSinkRepository == null) {
+            streamsEventSinkRepository = StreamsEventConsumerRepository(getEventConsumerFactory())
+        }
+        return streamsEventSinkRepository!!
+    }
+
 }
+
+enum class ConsumerStatus { INITIALIZED, RUNNING, STOPPED }
 
 abstract class StreamsEventConsumer<T>(private val consumer: T, config: StreamsSinkConfiguration, private val log: Log) {
 
@@ -27,6 +38,8 @@ abstract class StreamsEventConsumer<T>(private val consumer: T, config: StreamsS
     abstract fun start()
 
     abstract fun read(): Map<String, List<Any>>?
+
+    abstract fun status(): ConsumerStatus
 
 }
 
@@ -46,6 +59,6 @@ object StreamsEventSinkFactory {
     }
 }
 
-abstract class StreamsEventSinkConfigMapper(private val baseConfiguration: Map<String, String>, private val mapping: Map<String, String>) {
+abstract class StreamsEventSinkConfigMapper(val baseConfiguration: Map<String, String>, private val mapping: Map<String, String>) {
     abstract fun convert(config: Map<String, String>): Map<String, String>
 }

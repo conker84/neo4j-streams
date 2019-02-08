@@ -8,8 +8,9 @@ import org.neo4j.kernel.impl.core.GraphProperties
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.TestGraphDatabaseFactory
 import streams.kafka.KafkaSinkConfiguration
+import streams.utils.Neo4jUtils.readInTxWithGraphDatabaseService
+import streams.utils.Neo4jUtils.writeInTxWithGraphDatabaseService
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 class StreamsTopicServiceTest {
 
@@ -23,9 +24,13 @@ class StreamsTopicServiceTest {
         db = TestGraphDatabaseFactory()
                 .newImpermanentDatabaseBuilder()
                 .newGraphDatabase() as GraphDatabaseAPI
-        kafkaConfig = KafkaSinkConfiguration(streamsSinkConfiguration = StreamsSinkConfiguration(topics = mapOf("shouldWriteCypherQuery" to "MERGE (n:Label {id: event.id})\n" +
+        kafkaConfig = KafkaSinkConfiguration(streamsSinkConfiguration = StreamsSinkConfiguration(cypherTopics = mapOf("shouldWriteCypherQuery" to "MERGE (n:Label {id: event.id})\n" +
                 "    ON CREATE SET n += event.properties")))
-        streamsTopicService = StreamsTopicService(db, kafkaConfig.streamsSinkConfiguration.topics)
+        streamsTopicService = StreamsTopicService(db)
+        writeInTxWithGraphDatabaseService(db) {
+            streamsTopicService.setAllCypherTemplates(kafkaConfig.streamsSinkConfiguration.cypherTopics)
+            it.success()
+        }
         graphProperties = db.dependencyResolver.resolveDependency(EmbeddedProxySPI::class.java).newGraphPropertiesProxy()
     }
 
@@ -35,28 +40,30 @@ class StreamsTopicServiceTest {
     }
 
     private fun assertProperty(entry: Map.Entry<String, String>) {
-        assertEquals(entry.value, streamsTopicService.get(entry.key))
-        db.beginTx().use { assertTrue { graphProperties.hasProperty("streams.sink.topic.${entry.key}") } }
-
+        readInTxWithGraphDatabaseService(db) {
+            assertEquals(entry.value, streamsTopicService.getCypherTemplate(entry.key))
+        }
     }
 
     @Test
     fun shouldStoreTopicAndCypherTemplate() {
-        kafkaConfig.streamsSinkConfiguration.topics.forEach { assertProperty(it) }
+        kafkaConfig.streamsSinkConfiguration.cypherTopics.forEach { assertProperty(it) }
     }
 
     @Test
     fun shouldStoreTopicsAndCypherTemplate() {
-        val map = mapOf("topic1" to "MERGE (n:Label1 {id: event.id})",
-                "topic2" to "MERGE (n:Label2 {id: event.id})")
-        streamsTopicService.setAll(map)
+        readInTxWithGraphDatabaseService(db) {
+            val map = mapOf("topic1" to "MERGE (n:Label1 {id: event.id})",
+                    "topic2" to "MERGE (n:Label2 {id: event.id})")
+            streamsTopicService.setAllCypherTemplates(map)
 
-        val allTopics = map.plus(kafkaConfig.streamsSinkConfiguration.topics)
-        allTopics.forEach { assertProperty(it) }
+            val allTopics = map.plus(kafkaConfig.streamsSinkConfiguration.cypherTopics)
+            allTopics.forEach { assertProperty(it) }
 
-        assertEquals(allTopics, streamsTopicService.getAll())
+            assertEquals(allTopics, streamsTopicService.getAllCypherTemplates())
 
-        assertEquals(allTopics.keys, streamsTopicService.getTopics())
+            assertEquals(allTopics.keys, streamsTopicService.getTopics())
+        }
 
     }
 }

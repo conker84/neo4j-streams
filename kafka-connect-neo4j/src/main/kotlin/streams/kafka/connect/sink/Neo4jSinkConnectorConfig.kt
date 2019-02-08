@@ -8,6 +8,7 @@ import com.github.jcustenborder.kafka.connect.utils.config.validators.Validators
 import com.github.jcustenborder.kafka.connect.utils.config.validators.filesystem.ValidFile
 import org.apache.kafka.common.config.AbstractConfig
 import org.apache.kafka.common.config.ConfigDef
+import org.apache.kafka.common.config.ConfigException
 import org.apache.kafka.connect.sink.SinkTask
 import org.neo4j.driver.internal.async.pool.PoolSettings
 import org.neo4j.driver.v1.Config
@@ -36,8 +37,9 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>) : AbstractConfig(config(), 
     val loadBalancingStrategy: Config.LoadBalancingStrategy
     val batchTimeout: Long
     val batchSize: Int
+    val cdcTopics: Set<String>
 
-    val topicMap: Map<String, String>
+    val cypherTopics: Map<String, String>
 
     init {
         encryptionEnabled = getBoolean(ENCRYPTION_ENABLED)
@@ -66,20 +68,34 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>) : AbstractConfig(config(), 
         batchTimeout = getLong(BATCH_TIMEOUT_MSEC)
         batchSize = getInt(BATCH_SIZE)
 
-        topicMap = originals
+        cypherTopics = originals
                 .filterKeys { it.toString().startsWith(TOPIC_CYPHER_PREFIX) }
                 .mapKeys { it.key.toString().replace(TOPIC_CYPHER_PREFIX, "") }
                 .mapValues { it.value.toString() }
+
+        val cdcTopicsString = getString(TOPIC_CDC)
+        cdcTopics = if (cdcTopicsString == "") {
+            emptySet()
+        } else {
+            cdcTopicsString.split(";").toSet()
+        }
+
+        val crossDefinedTopics = cdcTopics.intersect(cypherTopics.keys)
+        if (crossDefinedTopics.isNotEmpty()) {
+            throw ConfigException("The following topics are cross defined between Cypher template configuration and CDC configuration: $crossDefinedTopics")
+        }
 
         val topics = if (originals.containsKey(SinkTask.TOPICS_CONFIG)) {
             originals["topics"].toString().split(",").map { it.trim() }.toSet()
         } else { // TODO manage regexp
             emptySet()
         }
-        if (topics != topicMap.keys.toSet()) {
-            throw RuntimeException("There is a mismatch between provided Cypher queries (${topicMap.keys}) and configured topics ($topics)")
+        if (topics != getAllTopics()) {
+            throw ConfigException("There is a mismatch between provided Cypher queries (${cypherTopics.keys}) and configured topics ($topics)")
         }
     }
+
+    fun getAllTopics() = cypherTopics.keys.toSet() + cdcTopics
 
     companion object {
         const val SERVER_URI = "neo4j.server.uri"
@@ -99,6 +115,7 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>) : AbstractConfig(config(), 
         const val CONNECTION_POOL_MAX_SIZE = "neo4j.connection.max.pool.size"
         const val CONNECTION_LOAD_BALANCE_STRATEGY = "neo4j.load.balance.strategy"
         const val TOPIC_CYPHER_PREFIX = "neo4j.topic.cypher."
+        const val TOPIC_CDC = "neo4j.topic.cdc"
         const val GROUP_ENCRYPTION = "Encryption"
         const val GROUP_CONNECTION = "Connection"
 
@@ -108,6 +125,10 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>) : AbstractConfig(config(), 
 
         fun config(): ConfigDef {
             return ConfigDef()
+                    .define(ConfigKeyBuilder.of(TOPIC_CDC, ConfigDef.Type.STRING)
+                            .documentation(TOPIC_CDC).importance(ConfigDef.Importance.HIGH)
+                            .defaultValue("").group("Cypher Template")
+                            .build())
                     .define(ConfigKeyBuilder.of(SERVER_URI, ConfigDef.Type.STRING)
                             .documentation(SERVER_URI).importance(ConfigDef.Importance.HIGH)
                             .defaultValue("bolt://localhost:7687").group(GROUP_CONNECTION)

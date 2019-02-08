@@ -52,3 +52,13 @@ data class Schema(val properties: List<String> = emptyList(),
 
 open class StreamsEvent(open val payload: Any)
 data class StreamsTransactionEvent(val meta: Meta, override val payload: Payload, val schema: Schema): StreamsEvent(payload)
+
+
+abstract class CDCEvent(open val id: String, open val properties: Map<String, Any>?)
+data class CDCNodeEvent(override val id: String, override val properties: Map<String, Any>?, val labels: String): CDCEvent(id, properties)
+data class CDCRelationshipNode(val id: String, val labels: String)
+
+data class CDCRelationshipEvent(override val id: String, override val properties: Map<String, Any>?,
+                                val label: String,
+                                val start: CDCRelationshipNode,
+                                val end: CDCRelationshipNode): CDCEvent(id, properties)
