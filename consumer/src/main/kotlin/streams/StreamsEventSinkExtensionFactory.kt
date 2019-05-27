@@ -1,5 +1,6 @@
 package streams
 
+import kotlinx.coroutines.*
 import org.neo4j.kernel.availability.AvailabilityGuard
 import org.neo4j.kernel.availability.AvailabilityListener
 import org.neo4j.kernel.configuration.Config
@@ -11,6 +12,7 @@ import org.neo4j.kernel.lifecycle.Lifecycle
 import org.neo4j.kernel.lifecycle.LifecycleAdapter
 import org.neo4j.logging.internal.LogService
 import streams.procedures.StreamsSinkProcedures
+import streams.utils.Neo4jUtils
 import streams.utils.StreamsUtils
 
 class StreamsEventSinkExtensionFactory : KernelExtensionFactory<StreamsEventSinkExtensionFactory.Dependencies>(ExtensionType.DATABASE,"Streams.Consumer") {
@@ -41,16 +43,26 @@ class StreamsEventSinkExtensionFactory : KernelExtensionFactory<StreamsEventSink
 
                     override fun available() {
                         val streamsSinkConfiguration = StreamsSinkConfiguration.from(configuration)
-                        val streamsTopicService = StreamsTopicService(db, streamsSinkConfiguration.topics)
+                        val streamsTopicService = StreamsTopicService(db)
                         val streamsQueryExecution = StreamsEventSinkQueryExecution(streamsTopicService, db, log.getUserLog(StreamsEventSinkQueryExecution::class.java))
                         StreamsSinkProcedures.registerStreamsSinkConfiguration(streamsSinkConfiguration)
                         eventSink = StreamsEventSinkFactory.getStreamsEventSink(configuration,
                                 streamsQueryExecution,
                                 streamsTopicService,
                                 log.getUserLog(StreamsEventSinkFactory::class.java))
-                        eventSink.start()
                         StreamsSinkProcedures.registerStreamsEventConsumerFactory(eventSink.getEventConsumerFactory())
                         StreamsSinkProcedures.registerStreamsEventSinkConfigMapper(eventSink.getEventSinkConfigMapper())
+                        if (Neo4jUtils.isCluster(db)) {
+                            GlobalScope.launch(Dispatchers.IO) {
+                                while (!Neo4jUtils.clusterHasLeader(db)) {
+                                    delay(2000)
+                                    println("Checking the cluster leader")
+                                }
+                                eventSink.start()
+                            }
+                        } else {
+                            eventSink.start()
+                        }
                     }
 
                 })

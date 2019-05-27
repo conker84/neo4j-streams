@@ -40,7 +40,9 @@ class KafkaEventSink(private val config: Config,
             return
         }
         log.info("Starting the Kafka Sink")
-        val topics = streamsTopicService.getAll()
+        val topics = streamsConfig.topics
+        streamsTopicService.clear()
+        streamsTopicService.setAll(streamsConfig.topics)
         this.eventConsumer = getEventConsumerFactory()
                 .createStreamsEventConsumer(config.raw, log)
                 .withTopics(topics.keys)

@@ -9,14 +9,10 @@ import streams.utils.Neo4jUtils
 
 private const val STREAMS_TOPIC_KEY: String = "streams.sink.topic."
 
-class StreamsTopicService(private val db: GraphDatabaseAPI, private val topicMap: Map<String, String>) {
+class StreamsTopicService(private val db: GraphDatabaseAPI, private val topicMap: Map<String, String> = emptyMap()) {
     private val properties: GraphProperties = db.dependencyResolver.resolveDependency(EmbeddedProxySPI::class.java).newGraphPropertiesProxy()
     private val log = Neo4jUtils.getLogService(db).getUserLog(StreamsTopicService::class.java)
 
-    init {
-        clear()
-        setAll(topicMap)
-    }
 
     fun clear() {
         if (!Neo4jUtils.isWriteableInstance(db)) {
