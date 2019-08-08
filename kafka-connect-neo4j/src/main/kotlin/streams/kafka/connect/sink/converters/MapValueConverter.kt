@@ -41,7 +41,6 @@ open class MapValueConverter<T>: AbstractConverter<MutableMap<String, T?>>() {
 
     override fun setTimestampField(result: MutableMap<String, T?>?, fieldName: String?, value: Date?) {
         setValue(result, fieldName, value)
-
     }
 
     override fun setTimeField(result: MutableMap<String, T?>?, fieldName: String?, value: Date?) {

@@ -29,6 +29,10 @@ import java.util.concurrent.TimeUnit
 class Neo4jService(private val config: Neo4jSinkConnectorConfig):
         StreamsSinkService(config.strategyMap) {
 
+    companion object {
+        @JvmStatic val STATUS_CODE_TO_SKIP = listOf("Neo.ClientError.Statement.SemanticError")
+    }
+
     private val converter = Neo4jValueConverter()
     private val log: Logger = LoggerFactory.getLogger(Neo4jService::class.java)
 
@@ -91,7 +95,8 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
     override fun write(query: String, events: Collection<Any>) {
         val session = driver.session()
         val records = events as List<Any>
-        val data = mapOf<String, Any>("events" to records.map { converter.convert(it) })
+        val data = mapOf<String, Any>("events" to records
+                .mapNotNull { try { converter.convert(it) } catch (e: Exception) { null } })
         try {
             runBlocking {
                 retryForException<Unit>(exceptions = arrayOf(ClientException::class.java, TransientException::class.java),
@@ -105,10 +110,14 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
                 }
             }
         } catch (e: Exception) {
-            if (log.isDebugEnabled) {
-                log.debug("Exception `${e.message}` while executing query: `$query`, with data: `$data`")
+            when {
+                e is ClientException && STATUS_CODE_TO_SKIP.contains(e.code()) -> {
+                    if (log.isDebugEnabled) {
+                        log.debug("Exception `${e.message}` with code ${e.code()} while executing query: `$query`, with data: `$data`")
+                    }
+                }
+                else -> throw e
             }
-            throw e
         }
     }
 
