@@ -26,6 +26,7 @@ import streams.service.sink.strategy.CUDRelationship
 import java.util.*
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 
@@ -60,26 +61,10 @@ class Neo4jSinkTaskTest {
 
 
     private val PLACE_SCHEMA = SchemaBuilder.struct().name("com.example.Place")
-            .field("name", Schema.STRING_SCHEMA)
+            .field("name", Schema.OPTIONAL_STRING_SCHEMA)
             .field("latitude", Schema.FLOAT32_SCHEMA)
             .field("longitude", Schema.FLOAT32_SCHEMA)
             .build()
-
-    private val PERSON_SCHEMA_EXT = SchemaBuilder.struct().name("com.example.Person")
-            .field("firstName", Schema.STRING_SCHEMA)
-            .field("lastName", Schema.STRING_SCHEMA)
-            .field("age", Schema.OPTIONAL_INT32_SCHEMA)
-            .field("bool", Schema.OPTIONAL_BOOLEAN_SCHEMA)
-            .field("short", Schema.OPTIONAL_INT16_SCHEMA)
-            .field("byte", Schema.OPTIONAL_INT8_SCHEMA)
-            .field("long", Schema.OPTIONAL_INT64_SCHEMA)
-            .field("float", Schema.OPTIONAL_FLOAT32_SCHEMA)
-            .field("double", Schema.OPTIONAL_FLOAT64_SCHEMA)
-            .field("modified", Timestamp.SCHEMA)
-            .field("visited", SchemaBuilder.array(PLACE_SCHEMA))
-            .build()
-
-
 
     @Test
     fun `test array of struct`() {
@@ -640,6 +625,37 @@ class Neo4jSinkTaskTest {
             """.trimIndent())
                     .columnAs<Long>("count").next()
             assertEquals(10L, countFooBarLabel)
+        }
+    }
+
+    @Test
+    fun `should insert data into Neo4j with merge on null`() {
+        val topic = "neotopic"
+        val props = mutableMapOf<String, String>()
+        props[Neo4jSinkConnectorConfig.ENCRYPTION_ENABLED] = false.toString()
+        props[Neo4jSinkConnectorConfig.SERVER_URI] = db.boltURI().toString()
+        props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$topic"] = "MERGE (p:Place {name: event.name}) ON CREATE SET p.latitude = event.latitude, p.longitude = event.longitude"
+        props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
+        props[SinkTask.TOPICS_CONFIG] = topic
+
+        val badStruct= Struct(PLACE_SCHEMA)
+                .put("name", null)
+                .put("latitude", 37.5629917.toFloat())
+                .put("longitude", -122.3255254.toFloat())
+
+        val struct = Struct(PLACE_SCHEMA)
+                .put("name", "San Mateo (CA)")
+                .put("latitude", 37.5629917.toFloat())
+                .put("longitude", -122.3255254.toFloat())
+
+        val task = Neo4jSinkTask()
+        task.initialize(mock(SinkTaskContext::class.java))
+        task.start(props)
+        task.put(listOf(SinkRecord(topic, 1, null, null, PERSON_SCHEMA, badStruct, 42)))
+        task.put(listOf(SinkRecord(topic, 1, null, null, PERSON_SCHEMA, struct, 43)))
+        db.graph().beginTx().use {
+            val node: Node? = db.graph().findNode(Label.label("Place"), "name", "San Mateo (CA)")
+            assertNotNull(node)
         }
     }
 

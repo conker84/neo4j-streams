@@ -21,8 +21,6 @@ import streams.service.TopicType
 import streams.service.TopicTypeGroup
 import streams.utils.StreamsUtils
 import streams.utils.retryForException
-import java.lang.RuntimeException
-import java.util.concurrent.CompletionException
 import java.util.concurrent.CopyOnWriteArraySet
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
@@ -110,10 +108,12 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
                 }
             }
         } catch (e: Exception) {
-            if (log.isDebugEnabled) {
-                log.debug("Exception `${e.message}` while executing query: `$query`, with data: `${records.subList(0,Math.min(5,records.size))}` total-records ${records.size}")
+            when (e) {
+                is ClientException -> {
+                    log.info("Exception `${e.message}` while executing query: `$query`, with data: `${records.subList(0,Math.min(5,records.size))}` total-records ${records.size}")
+                }
+                else -> throw e
             }
-            throw e
         } finally {
             session.close()
         }
