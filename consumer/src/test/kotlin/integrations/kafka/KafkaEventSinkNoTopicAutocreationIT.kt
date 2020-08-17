@@ -10,7 +10,6 @@ import org.junit.Assume
 import org.junit.BeforeClass
 import org.junit.Test
 import org.neo4j.function.ThrowingSupplier
-import org.neo4j.test.assertion.Assert
 import org.neo4j.test.rule.ImpermanentDbmsRule
 import org.testcontainers.containers.KafkaContainer
 import streams.KafkaTestUtils
@@ -90,7 +89,7 @@ class KafkaEventSinkNoTopicAutoCreationIT {
         kafkaProducer.send(producerRecord).get()
 
         // then
-        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+        streams.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val count = db.execute("MATCH (n:Person) RETURN COUNT(n) AS count") {
                 it.columnAs<Long>("count")
                         .next()

@@ -21,6 +21,7 @@ kafka.value.deserializer=org.apache.kafka.common.serialization.ByteArrayDeserial
 
 streams.check.apoc.timeout=<ms to await for APOC being loaded, default -1 skip the wait>
 streams.check.apoc.interval=<ms interval awaiting for APOC being loaded, default 1000>
+streams.systemdb.wait.timeout=<ms that the plugin waits the systemdb to be ready, default=10000>
 ----
 
 See the https://kafka.apache.org/documentation/#brokerconfigs[Apache Kafka documentation] for details on these settings.
@@ -119,3 +120,4 @@ streams.sink.enabled=true
 streams.sink.enabled.to.foo=false
 ----
 Then sink is enabled on all databases EXCEPT foo (local overrides global)
+

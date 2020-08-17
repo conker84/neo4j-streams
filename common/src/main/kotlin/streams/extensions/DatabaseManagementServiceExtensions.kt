@@ -10,11 +10,13 @@ fun DatabaseManagementService.getSystemDb() = this.database(Neo4jUtils.SYSTEM_DA
 fun DatabaseManagementService.getDefaultDbName() = getSystemDb().let {
     it.beginTx().use {
         val col = it.execute("SHOW DEFAULT DATABASE").columnAs<String>("name")
-        if (col.hasNext()) {
+        val name = if (col.hasNext()) {
             col.next()
         } else {
             null
         }
+        it.commit()
+        name
     }
 }
 

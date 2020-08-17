@@ -42,7 +42,7 @@ class KafkaEventSinkSimpleTSE: KafkaEventSinkBaseTSE() {
                 }
                 .toMap()
 
-        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+        streams.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val query = """
                 |MATCH (n:Label) WHERE properties(n) = ${'$'}props
                 |RETURN count(*) AS count""".trimMargin()
@@ -62,7 +62,7 @@ class KafkaEventSinkSimpleTSE: KafkaEventSinkBaseTSE() {
         kafkaProducer.send(producerRecord).get()
         delay(5000)
 
-        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+        streams.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val query = """
                 |MATCH (n:Label)
                 |RETURN n""".trimMargin()
@@ -91,7 +91,7 @@ class KafkaEventSinkSimpleTSE: KafkaEventSinkBaseTSE() {
         var producerRecord = ProducerRecord(product.first, UUID.randomUUID().toString(),
                 JSONUtils.writeValueAsBytes(props))
         kafkaProducer.send(producerRecord).get()
-        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+        streams.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val query = """
                 MATCH (p:Product)
                 WHERE properties(p) = ${'$'}props
@@ -147,7 +147,7 @@ class KafkaEventSinkSimpleTSE: KafkaEventSinkBaseTSE() {
         }
 
         // then
-        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+        streams.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             db.execute(query, mapOf("props" to props)) {
                 val result = it.columnAs<Long>("count")
                 result.hasNext() && result.next() == 1L && !result.hasNext()

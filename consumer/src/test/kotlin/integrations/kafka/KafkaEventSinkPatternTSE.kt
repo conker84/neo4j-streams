@@ -8,7 +8,6 @@ import org.apache.kafka.common.serialization.ByteArraySerializer
 import org.hamcrest.Matchers
 import org.junit.Test
 import org.neo4j.function.ThrowingSupplier
-import org.neo4j.test.assertion.Assert
 import streams.extensions.execute
 import streams.serialization.JSONUtils
 import streams.setConfig
@@ -31,7 +30,7 @@ class KafkaEventSinkPatternTSE : KafkaEventSinkBaseTSE() {
 
         var producerRecord = ProducerRecord(topic, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(data))
         kafkaProducer.send(producerRecord).get()
-        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+        streams.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val query = "MATCH (n:User{name: 'Andrea', surname: 'Santurbano', userId: 1, `address.city`: 'Venice'}) RETURN count(n) AS count"
             db.execute(query) {
                 val result = it.columnAs<Long>("count")
@@ -51,7 +50,7 @@ class KafkaEventSinkPatternTSE : KafkaEventSinkBaseTSE() {
 
         var producerRecord = ProducerRecord(topic, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(data))
         kafkaProducer.send(producerRecord).get()
-        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+        streams.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val query = """
                 MATCH p = (s:User{sourceName: 'Andrea', sourceSurname: 'Santurbano', sourceId: 1})-[:KNOWS{since: 2014}]->(e:User{targetName: 'Michael', targetSurname: 'Hunger', targetId: 1})
                 RETURN count(p) AS count
@@ -88,7 +87,7 @@ class KafkaEventSinkPatternTSE : KafkaEventSinkBaseTSE() {
 
         val producerRecord = ProducerRecord<ByteArray, ByteArray>(topic,  JSONUtils.writeValueAsBytes(data), null)
         kafkaProducer.send(producerRecord).get()
-        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+        streams.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val query = "MATCH (n:User) RETURN count(n) AS count"
             db.execute(query) {
                 val result = it.columnAs<Long>("count")

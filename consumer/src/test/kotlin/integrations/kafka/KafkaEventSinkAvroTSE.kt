@@ -9,7 +9,6 @@ import org.hamcrest.Matchers
 import org.junit.Test
 import org.neo4j.function.ThrowingSupplier
 import org.neo4j.graphdb.Node
-import org.neo4j.test.assertion.Assert
 import streams.setConfig
 import streams.start
 import java.util.UUID
@@ -47,7 +46,7 @@ class KafkaEventSinkAvroTSE : KafkaEventSinkBaseTSE() {
 
         // then
         val props = mapOf("name" to "Foo", "coordinates" to coordinates.toDoubleArray(), "citizens" to citizens)
-        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+        streams.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val query = """
                 |MATCH (p:Place)
                 |RETURN p""".trimMargin()
@@ -95,7 +94,7 @@ class KafkaEventSinkAvroTSE : KafkaEventSinkBaseTSE() {
 
         // then
         val props = mapOf("name" to "Foo", "coordinates" to coordinates.toDoubleArray(), "citizens" to citizens)
-        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+        streams.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val query = """
                 |MATCH (p:Place)
                 |RETURN p""".trimMargin()

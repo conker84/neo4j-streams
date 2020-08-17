@@ -26,6 +26,8 @@ data class StreamsConfig(private val log: Log, private val dbms: DatabaseManagem
         const val PROCEDURES_ENABLED = "streams.procedures.enabled"
         const val PROCEDURES_ENABLED_VALUE = true
         const val SINK_ENABLED = "streams.sink.enabled"
+        const val SYSTEM_DB_WAIT_TIMEOUT = "streams.systemdb.wait.timeout"
+        const val SYSTEM_DB_WAIT_TIMEOUT_VALUE = 10000L
         const val SINK_ENABLED_VALUE = false
         const val DEFAULT_PATH = "."
         const val CHECK_APOC_TIMEOUT = "check.apoc.timeout"
@@ -57,7 +59,7 @@ data class StreamsConfig(private val log: Log, private val dbms: DatabaseManagem
         val properties = neo4jConfAsProperties()
 
         val filteredValues = filterProperties(properties)
-                { key -> !SUPPORTED_PREFIXES.find { key.toString().startsWith(it) }.isNullOrBlank() }
+            { key -> !SUPPORTED_PREFIXES.find { key.toString().startsWith(it) }.isNullOrBlank() }
 
         if (log.isDebugEnabled) {
             log.debug("Neo4j Streams Global configuration from neo4j.conf file: $filteredValues")
@@ -80,8 +82,9 @@ data class StreamsConfig(private val log: Log, private val dbms: DatabaseManagem
     fun loadStreamsConfiguration() {
         val properties = neo4jConfAsProperties()
 
-        val filteredValues = filterProperties(properties,
-                { key -> key.toString().startsWith("streams.") })
+        val filteredValues = filterProperties(properties) { key ->
+            key.toString().startsWith("streams.")
+        }
 
         if (log.isDebugEnabled) {
             log.debug("Neo4j Streams configuration reloaded from neo4j.conf file: $filteredValues")
@@ -135,5 +138,8 @@ data class StreamsConfig(private val log: Log, private val dbms: DatabaseManagem
     fun isSinkGloballyEnabled() = this.config.getOrDefault(SINK_ENABLED, SINK_ENABLED_VALUE).toString().toBoolean()
 
     fun isSinkEnabled(dbName: String) = this.config.getOrDefault("${SINK_ENABLED}.to.$dbName", isSinkGloballyEnabled()).toString().toBoolean()
+
+    fun getSystemDbWaitTimeout() = this.config.getOrDefault(SYSTEM_DB_WAIT_TIMEOUT, SYSTEM_DB_WAIT_TIMEOUT_VALUE)
+            .toString().toLong()
 
 }

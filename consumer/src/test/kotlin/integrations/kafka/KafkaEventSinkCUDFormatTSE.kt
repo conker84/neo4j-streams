@@ -4,7 +4,6 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import org.hamcrest.Matchers
 import org.junit.Test
 import org.neo4j.function.ThrowingSupplier
-import org.neo4j.test.assertion.Assert
 import streams.extensions.execute
 import streams.serialization.JSONUtils
 import streams.service.sink.strategy.CUDNode
@@ -48,7 +47,7 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
         }
 
         // then
-        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+        streams.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val hasFooBar = db.execute("""
                 MATCH (n:Foo:Bar)
                 RETURN count(n) AS count
@@ -65,7 +64,7 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
             }
             hasFooBar && hasFooBarLabel
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
-        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+        streams.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val nodes = db.beginTx().use {
                 it.allNodes.stream().map { it.allProperties }.toList()
             }
@@ -110,7 +109,7 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
         }
 
         // then
-        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+        streams.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             db.execute("""
                 MATCH (n:Foo:Bar)
                 RETURN count(n) AS count
@@ -119,7 +118,7 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
                 fooBar.hasNext() && fooBar.next() == 10L && !fooBar.hasNext()
             }
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
-        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+        streams.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val nodes = db.beginTx().use {
                 it.allNodes.stream().map { it.allProperties }.toList()
             }
@@ -164,7 +163,7 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
         }
 
         // then
-        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+        streams.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val fooBar = db.execute("""
                 MATCH (n:Foo:Bar)
                 WHERE n.key > 5
@@ -202,7 +201,7 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
         }
 
         // then
-        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+        streams.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             db.execute("""
                 MATCH (n:Foo:Bar)
                 RETURN count(n) AS count
@@ -245,7 +244,7 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
         }
 
         // then
-        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+        streams.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             db.execute("""
                 MATCH p = (:Foo:Bar)-[:$rel_type]->(:FooBar)
                 RETURN count(p) AS count
@@ -254,7 +253,7 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
                 fooBar.hasNext() && fooBar.next() == 10L && !fooBar.hasNext()
             }
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
-        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+        streams.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val rels = db.beginTx().use {
                 it.allRelationships.stream().map { it.allProperties }.toList()
             }
@@ -294,7 +293,7 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
         }
 
         // then
-        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+        streams.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             db.execute("""
                 MATCH (:Foo:Bar)-[r:$rel_type]->(:FooBar)
                 RETURN count(r) AS count
@@ -303,7 +302,7 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
                 fooBar.hasNext() && fooBar.next() == 5L && !fooBar.hasNext()
             }
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
-        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+        streams.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val ids = db.execute("""
                         MATCH (:Foo:Bar)-[r:$rel_type]->(:FooBar)
                         RETURN r.id AS id
@@ -351,7 +350,7 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
         }
 
         // then
-        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+        streams.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             db.execute("""
                 MATCH (:Foo:Bar)-[r:$rel_type]->(:FooBar)
                 RETURN count(r) AS count

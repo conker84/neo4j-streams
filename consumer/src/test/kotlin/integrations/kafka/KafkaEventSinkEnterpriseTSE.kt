@@ -15,7 +15,6 @@ import org.junit.BeforeClass
 import org.junit.Test
 import org.neo4j.driver.SessionConfig
 import org.neo4j.function.ThrowingSupplier
-import org.neo4j.test.assertion.Assert
 import streams.KafkaTestUtils
 import streams.Neo4jContainerExtension
 import streams.serialization.JSONUtils
@@ -104,24 +103,24 @@ class KafkaEventSinkEnterpriseTSE {
         delay(5000)
 
         // then
-        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+        streams.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val nodes = getData("foo")
             1 == nodes.size && mapOf("id" to 1L, "foo" to "foo") == nodes[0]
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
-        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+        streams.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val nodes = getData("bar")
             1 == nodes.size && mapOf("id" to 1L, "bar" to "bar") == nodes[0]
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
-        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+        streams.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val nodes = getData("nonLowerCaseDb")
             1 == nodes.size && mapOf("id" to 1L, "nonLowerCaseDb" to "nonLowerCaseDb") == nodes[0]
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
 
-        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+        streams.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val nodes = getData("neo4j")
             nodes.isEmpty()
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
-        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+        streams.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val nodes = getData("baz")
             nodes.isEmpty()
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)

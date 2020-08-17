@@ -52,38 +52,54 @@ class StreamsEventSinkExtensionFactory : ExtensionFactory<StreamsEventSinkExtens
 
                 override fun available() {
                     try {
-                        configuration.loadStreamsConfiguration()
-                        streamsLog.info("Initialising the Streams Sink module")
-                        val streamsSinkConfiguration = StreamsSinkConfiguration.from(configuration, db.databaseName())
-                        val streamsTopicService = StreamsTopicService()
-                        val strategyMap = TopicUtils.toStrategyMap(streamsSinkConfiguration.topics,
-                                streamsSinkConfiguration.sourceIdStrategyConfig)
-                        val streamsQueryExecution = StreamsEventSinkQueryExecution(streamsTopicService, db,
-                                logService.getUserLog(StreamsEventSinkQueryExecution::class.java),
-                                strategyMap)
+                        val systemDbWaitTimeout = configuration.getSystemDbWaitTimeout()
+                        val whenAvailable = {
+                            configuration.loadStreamsConfiguration()
+                            if (!configuration.isSinkEnabled(db.databaseName())) {
+                                Unit
+                            } else {
+                                streamsLog.info("Initialising the Streams Sink module")
+                                val streamsSinkConfiguration = StreamsSinkConfiguration.from(configuration, db.databaseName())
+                                val streamsTopicService = StreamsTopicService()
+                                val strategyMap = TopicUtils.toStrategyMap(streamsSinkConfiguration.topics,
+                                        streamsSinkConfiguration.sourceIdStrategyConfig)
+                                val streamsQueryExecution = StreamsEventSinkQueryExecution(streamsTopicService, db,
+                                        logService.getUserLog(StreamsEventSinkQueryExecution::class.java),
+                                        strategyMap)
 
-                        // Create the Sink
-                        val log = logService.getUserLog(StreamsEventSinkFactory::class.java)
-                        eventSink = StreamsEventSinkFactory
-                                .getStreamsEventSink(configuration,
-                                        streamsQueryExecution,
-                                        streamsTopicService,
-                                        log,
-                                        db)
-                        // start the Sink
-                        if (Neo4jUtils.isCluster(db)) {
-                            log.info("The Sink module is running in a cluster, checking for the ${Neo4jUtils.LEADER}")
-                            Neo4jUtils.waitForTheLeader(db, log) { initSinkModule(streamsTopicService, streamsSinkConfiguration) }
-                        } else {
-                            // check if is writeable instance
-                            Neo4jUtils.executeInWriteableInstance(db) { initSinkModule(streamsTopicService, streamsSinkConfiguration) }
+                                // Create the Sink
+                                val log = logService.getUserLog(StreamsEventSinkFactory::class.java)
+                                eventSink = StreamsEventSinkFactory
+                                        .getStreamsEventSink(configuration,
+                                                streamsQueryExecution,
+                                                streamsTopicService,
+                                                log,
+                                                db)
+
+                                StreamsSinkProcedures.registerStreamsSinkConfiguration(streamsSinkConfiguration)
+                                StreamsSinkProcedures.registerStreamsEventConsumerFactory(eventSink.getEventConsumerFactory())
+                                StreamsSinkProcedures.registerStreamsEventSinkConfigMapper(eventSink.getEventSinkConfigMapper())
+                                StreamsSinkProcedures.registerStreamsEventSink(eventSink)
+
+                                // start the Sink
+                                if (Neo4jUtils.isCluster(db)) {
+                                    log.info("The Sink module is running in a cluster, checking for the ${Neo4jUtils.LEADER}")
+                                    Neo4jUtils.waitForTheLeader(db, log) { initSinkModule(streamsTopicService, streamsSinkConfiguration) }
+                                } else {
+                                    // check if is writeable instance
+                                    Neo4jUtils.executeInWriteableInstance(db) { initSinkModule(streamsTopicService, streamsSinkConfiguration) }
+                                }
+                                Unit
+                            }
                         }
-
-                        // Register required services for the Procedures
-                        StreamsSinkProcedures.registerStreamsSinkConfiguration(streamsSinkConfiguration)
-                        StreamsSinkProcedures.registerStreamsEventConsumerFactory(eventSink.getEventConsumerFactory())
-                        StreamsSinkProcedures.registerStreamsEventSinkConfigMapper(eventSink.getEventSinkConfigMapper())
-                        StreamsSinkProcedures.registerStreamsEventSink(eventSink)
+                        val whenNotAvailable = {
+                            streamsLog.info("""
+                                |Cannot start Streams Sink module because database ${Neo4jUtils.SYSTEM_DATABASE_NAME} 
+                                |is not available after $systemDbWaitTimeout ms
+                            """.trimMargin())
+                        }
+                        Neo4jUtils.executeWhenSystemDbIsAvailable(dbms,
+                                configuration, whenAvailable, whenNotAvailable)
                     } catch (e: Exception) {
                         streamsLog.error("Error initializing the streaming sink:", e)
                     }

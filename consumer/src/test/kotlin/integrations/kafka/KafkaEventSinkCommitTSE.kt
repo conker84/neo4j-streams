@@ -6,7 +6,6 @@ import org.apache.kafka.common.TopicPartition
 import org.hamcrest.Matchers
 import org.junit.Test
 import org.neo4j.function.ThrowingSupplier
-import org.neo4j.test.assertion.Assert
 import streams.KafkaTestUtils
 import streams.extensions.execute
 import streams.serialization.JSONUtils
@@ -30,7 +29,7 @@ class KafkaEventSinkCommitTSE : KafkaEventSinkBaseTSE() {
         producerRecord = ProducerRecord(topic, partition, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(newData))
         val resp = kafkaProducer.send(producerRecord).get()
 
-        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+        streams.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val kafkaConsumer = KafkaTestUtils.createConsumer<String, ByteArray>(
                     bootstrapServers = KafkaEventSinkSuiteIT.kafka.bootstrapServers,
                     schemaRegistryUrl = KafkaEventSinkSuiteIT.schemaRegistry.getSchemaRegistryUrl())
@@ -68,7 +67,7 @@ class KafkaEventSinkCommitTSE : KafkaEventSinkBaseTSE() {
         var producerRecord = ProducerRecord(product.first, UUID.randomUUID().toString(),
                 JSONUtils.writeValueAsBytes(props))
         kafkaProducer.send(producerRecord).get()
-        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+        streams.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val query = """
                 MATCH (p:Product)
                 WHERE properties(p) = ${'$'}props

@@ -5,7 +5,6 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.hamcrest.Matchers
 import org.junit.Test
 import org.neo4j.function.ThrowingSupplier
-import org.neo4j.test.assertion.Assert
 import streams.KafkaTestUtils
 import streams.extensions.execute
 import streams.serialization.JSONUtils
@@ -38,7 +37,7 @@ class KafkaEventSinkDLQTSE : KafkaEventSinkBaseTSE() {
                 topics = *arrayOf(dlqTopic))
 
         dlqConsumer.let {
-            Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+            streams.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
                 val query = """
                 MATCH (c:Customer)
                 RETURN count(c) AS count
@@ -81,7 +80,7 @@ class KafkaEventSinkDLQTSE : KafkaEventSinkBaseTSE() {
                 valueDeserializer = ByteArrayDeserializer::class.java.name,
                 topics = *arrayOf(dlqTopic))
         dlqConsumer.let {
-            Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+            streams.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
                 val query = """
                 MATCH (c:Customer)
                 RETURN count(c) AS count
