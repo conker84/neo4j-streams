@@ -107,7 +107,20 @@
         </dependencies>
     </dependencyManagement>
 
+    <repositories>
+        <repository>
+            <id>jitpack.io</id>
+            <name>Jitpack</name>
+            <url>https://jitpack.io</url>
+        </repository>
+    </repositories>
+
     <dependencies>
+        <dependency>
+            <groupId>com.github.conker84</groupId>
+            <artifactId>neo4j-configuration-lifecycle</artifactId>
+            <version>8044f2e328</version>
+        </dependency>
 
         <dependency>
             <groupId>org.neo4j</groupId>
@@ -229,6 +242,12 @@
             <version>1.3</version>
             <scope>test</scope>
         </dependency>
+<!--        <dependency>-->
+<!--            <groupId>org.slf4j</groupId>-->
+<!--            <artifactId>slf4j-simple</artifactId>-->
+<!--            <version>1.7.30</version>-->
+<!--            <scope>test</scope>-->
+<!--        </dependency>-->
 
     </dependencies>
 
