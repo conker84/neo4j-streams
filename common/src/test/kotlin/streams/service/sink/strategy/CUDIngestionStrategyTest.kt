@@ -1,6 +1,11 @@
 package streams.service.sink.strategy
 
 import org.junit.Test
+import org.neo4j.graph_integration.strategy.cud.CUDNode
+import org.neo4j.graph_integration.strategy.cud.CUDNodeRel
+import org.neo4j.graph_integration.strategy.cud.CUDOperations
+import org.neo4j.graph_integration.strategy.cud.CUDRelationship
+import org.neo4j.graph_integration.utils.IngestionUtils
 import streams.extensions.quote
 import streams.service.StreamsSinkEntity
 import streams.utils.StreamsUtils
@@ -13,7 +18,7 @@ class CUDIngestionStrategyTest {
 
     private fun assertNodeEventsContainsKey(qe: QueryEvents, vararg keys: String) = assertTrue {
         qe.events.all {
-            val ids = it[CUDIngestionStrategy.ID_KEY] as Map<String, Any>
+            val ids = it[org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY] as Map<String, Any>
             ids.keys.containsAll(keys.toList())
         }
     }
@@ -21,9 +26,9 @@ class CUDIngestionStrategyTest {
     private fun assertRelationshipEventsContainsKey(qe: QueryEvents, fromKey: String, toKey: String) = assertTrue {
             qe.events.all {
                 val from = it["from"] as Map<String, Any>
-                val idsFrom = from[CUDIngestionStrategy.ID_KEY] as Map<String, Any>
+                val idsFrom = from[org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY] as Map<String, Any>
                 val to = it["to"] as Map<String, Any>
-                val idsTo = to[CUDIngestionStrategy.ID_KEY] as Map<String, Any>
+                val idsTo = to[org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY] as Map<String, Any>
                 idsFrom.containsKey(fromKey) && idsTo.containsKey(toKey)
             }
         }
@@ -78,28 +83,28 @@ class CUDIngestionStrategyTest {
         assertEquals(2, createNodeFooBarLabel.events.size)
         val mergeNodeFooBar = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MERGE (n:Foo:Bar {${key.quote()}: event.${CUDIngestionStrategy.ID_KEY}.${key.quote()}})
+                |MERGE (n:Foo:Bar {${key.quote()}: event.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.${key.quote()}})
                 |SET n += event.properties
             """.trimMargin(), nodeEvents)
         assertEquals(1, mergeNodeFooBar.events.size)
         assertNodeEventsContainsKey(mergeNodeFooBar, key)
         val mergeNodeFooBarLabel = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MERGE (n:Foo:Bar:Label {${key.quote()}: event.${CUDIngestionStrategy.ID_KEY}.${key.quote()}})
+                |MERGE (n:Foo:Bar:Label {${key.quote()}: event.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.${key.quote()}})
                 |SET n += event.properties
             """.trimMargin(), nodeEvents)
         assertEquals(2, mergeNodeFooBarLabel.events.size)
         assertNodeEventsContainsKey(mergeNodeFooBarLabel, key)
         val updateNodeFooBar = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (n:Foo:Bar {${key.quote()}: event.${CUDIngestionStrategy.ID_KEY}.${key.quote()}})
+                |MATCH (n:Foo:Bar {${key.quote()}: event.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.${key.quote()}})
                 |SET n += event.properties
             """.trimMargin(), nodeEvents)
         assertEquals(1, updateNodeFooBar.events.size)
         assertNodeEventsContainsKey(updateNodeFooBar, key)
         val updateNodeFooBarLabel = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (n:Foo:Bar:Label {${key.quote()}: event.${CUDIngestionStrategy.ID_KEY}.${key.quote()}})
+                |MATCH (n:Foo:Bar:Label {${key.quote()}: event.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.${key.quote()}})
                 |SET n += event.properties
             """.trimMargin(), nodeEvents)
         assertEquals(1, updateNodeFooBarLabel.events.size)
@@ -157,28 +162,28 @@ class CUDIngestionStrategyTest {
         assertEquals(2, createNodeFooBarLabel.events.size)
         val mergeNodeFooBar = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MERGE (n:WellBehaved:`C̸r̵a̵z̵y̵ ̶.̵ ̶ ̴ ̸ ̶ ̶ ̵ ̴L̴a̵b̸e̶l` {`$key`: event.${CUDIngestionStrategy.ID_KEY}.`$key`})
+                |MERGE (n:WellBehaved:`C̸r̵a̵z̵y̵ ̶.̵ ̶ ̴ ̸ ̶ ̶ ̵ ̴L̴a̵b̸e̶l` {`$key`: event.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.`$key`})
                 |SET n += event.properties
             """.trimMargin(), nodeEvents)
         assertEquals(1, mergeNodeFooBar.events.size)
         assertNodeEventsContainsKey(mergeNodeFooBar, key)
         val mergeNodeFooBarLabel = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MERGE (n:WellBehaved:`C̸r̵a̵z̵y̵ ̶.̵ ̶ ̴ ̸ ̶ ̶ ̵ ̴L̴a̵b̸e̶l`:Label {`$key`: event.${CUDIngestionStrategy.ID_KEY}.`$key`})
+                |MERGE (n:WellBehaved:`C̸r̵a̵z̵y̵ ̶.̵ ̶ ̴ ̸ ̶ ̶ ̵ ̴L̴a̵b̸e̶l`:Label {`$key`: event.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.`$key`})
                 |SET n += event.properties
             """.trimMargin(), nodeEvents)
         assertEquals(2, mergeNodeFooBarLabel.events.size)
         assertNodeEventsContainsKey(mergeNodeFooBarLabel, key)
         val updateNodeFooBar = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (n:WellBehaved:`C̸r̵a̵z̵y̵ ̶.̵ ̶ ̴ ̸ ̶ ̶ ̵ ̴L̴a̵b̸e̶l` {`$key`: event.${CUDIngestionStrategy.ID_KEY}.`$key`})
+                |MATCH (n:WellBehaved:`C̸r̵a̵z̵y̵ ̶.̵ ̶ ̴ ̸ ̶ ̶ ̵ ̴L̴a̵b̸e̶l` {`$key`: event.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.`$key`})
                 |SET n += event.properties
             """.trimMargin(), nodeEvents)
         assertEquals(1, updateNodeFooBar.events.size)
         assertNodeEventsContainsKey(updateNodeFooBar, key)
         val updateNodeFooBarLabel = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (n:WellBehaved:`C̸r̵a̵z̵y̵ ̶.̵ ̶ ̴ ̸ ̶ ̶ ̵ ̴L̴a̵b̸e̶l`:Label {`$key`: event.${CUDIngestionStrategy.ID_KEY}.`$key`})
+                |MATCH (n:WellBehaved:`C̸r̵a̵z̵y̵ ̶.̵ ̶ ̴ ̸ ̶ ̶ ̵ ̴L̴a̵b̸e̶l`:Label {`$key`: event.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.`$key`})
                 |SET n += event.properties
             """.trimMargin(), nodeEvents)
         assertEquals(1, updateNodeFooBarLabel.events.size)
@@ -188,7 +193,7 @@ class CUDIngestionStrategyTest {
         val nodeDeleteEvent = nodeDeleteEvents.first()
         assertEquals("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (n:WellBehaved:`C̸r̵a̵z̵y̵ ̶.̵ ̶ ̴ ̸ ̶ ̶ ̵ ̴L̴a̵b̸e̶l` {`$key`: event.${CUDIngestionStrategy.ID_KEY}.`$key`})
+                |MATCH (n:WellBehaved:`C̸r̵a̵z̵y̵ ̶.̵ ̶ ̴ ̸ ̶ ̶ ̵ ̴L̴a̵b̸e̶l` {`$key`: event.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.`$key`})
                 |DETACH DELETE n
             """.trimMargin(), nodeDeleteEvent.query)
     }
@@ -279,9 +284,9 @@ class CUDIngestionStrategyTest {
         assertEquals(6, relationshipEvents.map { it.events.size }.sum())
         val createRelFooBarLabel = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |CREATE (from:Foo:Bar:Label {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |CREATE (from:Foo:Bar:Label {key: event.from.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |${StreamsUtils.WITH_EVENT_FROM}
-                |MATCH (to:Foo:Bar:Label {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (to:Foo:Bar:Label {key: event.to.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |CREATE (from)-[r:MY_REL]->(to)
                 |SET r = event.properties
             """.trimMargin(), relationshipEvents)
@@ -289,9 +294,9 @@ class CUDIngestionStrategyTest {
         assertRelationshipEventsContainsKey(createRelFooBarLabel, key, key)
         val mergeRelFooBarLabel = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |CREATE (from:Foo:Bar:Label {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |CREATE (from:Foo:Bar:Label {key: event.from.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |${StreamsUtils.WITH_EVENT_FROM}
-                |MATCH (to:Foo:Bar:Label {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (to:Foo:Bar:Label {key: event.to.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |MERGE (from)-[r:MY_REL]->(to)
                 |SET r += event.properties
             """.trimMargin(), relationshipEvents)
@@ -332,7 +337,7 @@ class CUDIngestionStrategyTest {
         assertEquals(10, nodeDeleteEvents.map { it.events.size }.sum())
         val deleteNodeFooBar = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (n) WHERE id(n) = event.${CUDIngestionStrategy.ID_KEY}._id
+                |MATCH (n) WHERE id(n) = event.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}._id
                 |DELETE n
             """.trimMargin(), nodeDeleteEvents)
         assertEquals(3, deleteNodeFooBar.events.size)
@@ -340,21 +345,21 @@ class CUDIngestionStrategyTest {
         assertNodeEventsContainsKey(deleteNodeFooBar, key)
         val deleteNodeFooBarDetach = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (n) WHERE id(n) = event.${CUDIngestionStrategy.ID_KEY}._id
+                |MATCH (n) WHERE id(n) = event.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}._id
                 |DETACH DELETE n
             """.trimMargin(), nodeDeleteEvents)
         assertEquals(2, deleteNodeFooBarDetach.events.size)
         assertNodeEventsContainsKey(deleteNodeFooBarDetach, key)
         val deleteNodeFooBarLabel = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (n) WHERE id(n) = event.${CUDIngestionStrategy.ID_KEY}._id
+                |MATCH (n) WHERE id(n) = event.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}._id
                 |DELETE n
             """.trimMargin(), nodeDeleteEvents)
         assertEquals(3, deleteNodeFooBarLabel.events.size)
         assertNodeEventsContainsKey(deleteNodeFooBarLabel, key)
         val deleteNodeFooBarLabelDetach = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (n) WHERE id(n) = event.${CUDIngestionStrategy.ID_KEY}._id
+                |MATCH (n) WHERE id(n) = event.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}._id
                 |DETACH DELETE n
             """.trimMargin(), nodeDeleteEvents)
         assertEquals(2, deleteNodeFooBarLabelDetach.events.size)
@@ -454,9 +459,9 @@ class CUDIngestionStrategyTest {
         assertEquals(10, relationshipEvents.map { it.events.size }.sum())
         val createRelFooBar = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (from:Foo:Bar {key: event.from.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |${StreamsUtils.WITH_EVENT_FROM}
-                |MATCH (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (to:Foo:Bar {key: event.to.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |CREATE (from)-[r:MY_REL]->(to)
                 |SET r = event.properties
             """.trimMargin(), relationshipEvents)
@@ -464,9 +469,9 @@ class CUDIngestionStrategyTest {
         assertRelationshipEventsContainsKey(createRelFooBar, key, key)
         val mergeRelFooBar = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (from:Foo:Bar {key: event.from.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |${StreamsUtils.WITH_EVENT_FROM}
-                |MATCH (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (to:Foo:Bar {key: event.to.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |MERGE (from)-[r:MY_REL]->(to)
                 |SET r += event.properties
             """.trimMargin(), relationshipEvents)
@@ -474,8 +479,8 @@ class CUDIngestionStrategyTest {
         assertRelationshipEventsContainsKey(mergeRelFooBar, key, key)
         val updateRelFooBar = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
-                |MATCH (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (from:Foo:Bar {key: event.from.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (to:Foo:Bar {key: event.to.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |MATCH (from)-[r:MY_REL]->(to)
                 |SET r += event.properties
             """.trimMargin(), relationshipEvents)
@@ -483,9 +488,9 @@ class CUDIngestionStrategyTest {
         assertRelationshipEventsContainsKey(updateRelFooBar, key, key)
         val createRelFooBarLabel = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (from:Foo:Bar:Label {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (from:Foo:Bar:Label {key: event.from.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |${StreamsUtils.WITH_EVENT_FROM}
-                |MATCH (to:Foo:Bar:Label {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (to:Foo:Bar:Label {key: event.to.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |CREATE (from)-[r:MY_REL]->(to)
                 |SET r = event.properties
             """.trimMargin(), relationshipEvents)
@@ -493,9 +498,9 @@ class CUDIngestionStrategyTest {
         assertRelationshipEventsContainsKey(createRelFooBarLabel, key, key)
         val mergeRelFooBarLabel = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (from:Foo:Bar:Label {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (from:Foo:Bar:Label {key: event.from.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |${StreamsUtils.WITH_EVENT_FROM}
-                |MATCH (to:Foo:Bar:Label {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (to:Foo:Bar:Label {key: event.to.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |MERGE (from)-[r:MY_REL]->(to)
                 |SET r += event.properties
             """.trimMargin(), relationshipEvents)
@@ -503,8 +508,8 @@ class CUDIngestionStrategyTest {
         assertRelationshipEventsContainsKey(mergeRelFooBarLabel, key, key)
         val updateRelFooBarLabel = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (from:Foo:Bar:Label {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
-                |MATCH (to:Foo:Bar:Label {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (from:Foo:Bar:Label {key: event.from.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (to:Foo:Bar:Label {key: event.to.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |MATCH (from)-[r:MY_REL]->(to)
                 |SET r += event.properties
             """.trimMargin(), relationshipEvents)
@@ -549,9 +554,9 @@ class CUDIngestionStrategyTest {
         assertEquals(10, relationshipEvents.map { it.events.size }.sum())
         val createRelFooBar = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MERGE (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |MERGE (from:Foo:Bar {key: event.from.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |${StreamsUtils.WITH_EVENT_FROM}
-                |MERGE (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |MERGE (to:Foo:Bar {key: event.to.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |CREATE (from)-[r:MY_REL]->(to)
                 |SET r = event.properties
             """.trimMargin(), relationshipEvents)
@@ -559,9 +564,9 @@ class CUDIngestionStrategyTest {
         assertRelationshipEventsContainsKey(createRelFooBar, key, key)
         val mergeRelFooBar = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MERGE (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |MERGE (from:Foo:Bar {key: event.from.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |${StreamsUtils.WITH_EVENT_FROM}
-                |MERGE (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |MERGE (to:Foo:Bar {key: event.to.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |MERGE (from)-[r:MY_REL]->(to)
                 |SET r += event.properties
             """.trimMargin(), relationshipEvents)
@@ -569,8 +574,8 @@ class CUDIngestionStrategyTest {
         assertRelationshipEventsContainsKey(mergeRelFooBar, key, key)
         val updateRelFooBar = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
-                |MATCH (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (from:Foo:Bar {key: event.from.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (to:Foo:Bar {key: event.to.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |MATCH (from)-[r:MY_REL]->(to)
                 |SET r += event.properties
             """.trimMargin(), relationshipEvents)
@@ -578,9 +583,9 @@ class CUDIngestionStrategyTest {
         assertRelationshipEventsContainsKey(updateRelFooBar, key, key)
         val createRelFooBarLabel = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MERGE (from:Foo:Bar:Label {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |MERGE (from:Foo:Bar:Label {key: event.from.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |${StreamsUtils.WITH_EVENT_FROM}
-                |MERGE (to:Foo:Bar:Label {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |MERGE (to:Foo:Bar:Label {key: event.to.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |CREATE (from)-[r:MY_REL]->(to)
                 |SET r = event.properties
             """.trimMargin(), relationshipEvents)
@@ -588,9 +593,9 @@ class CUDIngestionStrategyTest {
         assertRelationshipEventsContainsKey(createRelFooBarLabel, key, key)
         val mergeRelFooBarLabel = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MERGE (from:Foo:Bar:Label {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |MERGE (from:Foo:Bar:Label {key: event.from.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |${StreamsUtils.WITH_EVENT_FROM}
-                |MERGE (to:Foo:Bar:Label {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |MERGE (to:Foo:Bar:Label {key: event.to.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |MERGE (from)-[r:MY_REL]->(to)
                 |SET r += event.properties
             """.trimMargin(), relationshipEvents)
@@ -598,8 +603,8 @@ class CUDIngestionStrategyTest {
         assertRelationshipEventsContainsKey(mergeRelFooBarLabel, key, key)
         val updateRelFooBarLabel = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (from:Foo:Bar:Label {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
-                |MATCH (to:Foo:Bar:Label {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (from:Foo:Bar:Label {key: event.from.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (to:Foo:Bar:Label {key: event.to.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |MATCH (from)-[r:MY_REL]->(to)
                 |SET r += event.properties
             """.trimMargin(), relationshipEvents)
@@ -644,9 +649,9 @@ class CUDIngestionStrategyTest {
         assertEquals(10, relationshipEvents.map { it.events.size }.sum())
         val createRelFooBar = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (from:Foo:Bar {key: event.from.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |${StreamsUtils.WITH_EVENT_FROM}
-                |MERGE (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |MERGE (to:Foo:Bar {key: event.to.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |CREATE (from)-[r:MY_REL]->(to)
                 |SET r = event.properties
             """.trimMargin(), relationshipEvents)
@@ -654,9 +659,9 @@ class CUDIngestionStrategyTest {
         assertRelationshipEventsContainsKey(createRelFooBar, key, key)
         val mergeRelFooBar = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (from:Foo:Bar {key: event.from.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |${StreamsUtils.WITH_EVENT_FROM}
-                |MERGE (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |MERGE (to:Foo:Bar {key: event.to.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |MERGE (from)-[r:MY_REL]->(to)
                 |SET r += event.properties
             """.trimMargin(), relationshipEvents)
@@ -664,9 +669,9 @@ class CUDIngestionStrategyTest {
         assertRelationshipEventsContainsKey(mergeRelFooBar, key, key)
         val matchMergeAndMergeRelFooBar = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (from:Foo:Bar {key: event.from.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |${StreamsUtils.WITH_EVENT_FROM}
-                |MERGE (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |MERGE (to:Foo:Bar {key: event.to.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |MERGE (from)-[r:MY_REL]->(to)
                 |SET r += event.properties
             """.trimMargin(), relationshipEvents)
@@ -674,9 +679,9 @@ class CUDIngestionStrategyTest {
         assertRelationshipEventsContainsKey(matchMergeAndMergeRelFooBar, key, key)
         val matchMergeAndCreateRelFooBar = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (from:Foo:Bar {key: event.from.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |${StreamsUtils.WITH_EVENT_FROM}
-                |CREATE (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |CREATE (to:Foo:Bar {key: event.to.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |MERGE (from)-[r:MY_REL]->(to)
                 |SET r += event.properties
             """.trimMargin(), relationshipEvents)
@@ -684,8 +689,8 @@ class CUDIngestionStrategyTest {
         assertRelationshipEventsContainsKey(matchMergeAndCreateRelFooBar, key, key)
         val updateRelFooBar = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
-                |MATCH (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (from:Foo:Bar {key: event.from.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (to:Foo:Bar {key: event.to.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |MATCH (from)-[r:MY_REL]->(to)
                 |SET r += event.properties
             """.trimMargin(), relationshipEvents)
@@ -693,9 +698,9 @@ class CUDIngestionStrategyTest {
         assertRelationshipEventsContainsKey(updateRelFooBar, key, key)
         val mergeRelFooBarLabel = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (from:Foo:Bar {key: event.from.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |${StreamsUtils.WITH_EVENT_FROM}
-                |CREATE (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |CREATE (to:Foo:Bar {key: event.to.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |CREATE (from)-[r:MY_REL]->(to)
                 |SET r = event.properties
             """.trimMargin(), relationshipEvents)
@@ -740,9 +745,9 @@ class CUDIngestionStrategyTest {
         assertEquals(10, relationshipEvents.map { it.events.size }.sum())
         val createRelFooBar = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MERGE (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |MERGE (from:Foo:Bar {key: event.from.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |${StreamsUtils.WITH_EVENT_FROM}
-                |MATCH (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (to:Foo:Bar {key: event.to.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |CREATE (from)-[r:MY_REL]->(to)
                 |SET r = event.properties
             """.trimMargin(), relationshipEvents)
@@ -750,9 +755,9 @@ class CUDIngestionStrategyTest {
         assertRelationshipEventsContainsKey(createRelFooBar, key, key)
         val mergeRelFooBar = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MERGE (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |MERGE (from:Foo:Bar {key: event.from.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |${StreamsUtils.WITH_EVENT_FROM}
-                |MATCH (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (to:Foo:Bar {key: event.to.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |MERGE (from)-[r:MY_REL]->(to)
                 |SET r += event.properties
             """.trimMargin(), relationshipEvents)
@@ -760,9 +765,9 @@ class CUDIngestionStrategyTest {
         assertRelationshipEventsContainsKey(mergeRelFooBar, key, key)
         val matchMergeAndMergeRelFooBar = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MERGE (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |MERGE (from:Foo:Bar {key: event.from.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |${StreamsUtils.WITH_EVENT_FROM}
-                |MATCH (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (to:Foo:Bar {key: event.to.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |MERGE (from)-[r:MY_REL]->(to)
                 |SET r += event.properties
             """.trimMargin(), relationshipEvents)
@@ -770,9 +775,9 @@ class CUDIngestionStrategyTest {
         assertRelationshipEventsContainsKey(matchMergeAndMergeRelFooBar, key, key)
         val matchMergeAndCreateRelFooBar = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |CREATE (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |CREATE (from:Foo:Bar {key: event.from.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |${StreamsUtils.WITH_EVENT_FROM}
-                |MATCH (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (to:Foo:Bar {key: event.to.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |MERGE (from)-[r:MY_REL]->(to)
                 |SET r += event.properties
             """.trimMargin(), relationshipEvents)
@@ -780,8 +785,8 @@ class CUDIngestionStrategyTest {
         assertRelationshipEventsContainsKey(matchMergeAndCreateRelFooBar, key, key)
         val updateRelFooBar = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
-                |MATCH (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (from:Foo:Bar {key: event.from.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (to:Foo:Bar {key: event.to.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |MATCH (from)-[r:MY_REL]->(to)
                 |SET r += event.properties
             """.trimMargin(), relationshipEvents)
@@ -789,9 +794,9 @@ class CUDIngestionStrategyTest {
         assertRelationshipEventsContainsKey(updateRelFooBar, key, key)
         val mergeRelFooBarLabel = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |CREATE (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |CREATE (from:Foo:Bar {key: event.from.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |${StreamsUtils.WITH_EVENT_FROM}
-                |MATCH (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (to:Foo:Bar {key: event.to.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |CREATE (from)-[r:MY_REL]->(to)
                 |SET r = event.properties
             """.trimMargin(), relationshipEvents)
@@ -829,8 +834,8 @@ class CUDIngestionStrategyTest {
         assertEquals(10, relationshipDeleteEvents.map { it.events.size }.sum())
         val deleteRelFooBar = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
-                |MATCH (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (from:Foo:Bar {key: event.from.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (to:Foo:Bar {key: event.to.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |MATCH (from)-[r:MY_REL]->(to)
                 |DELETE r
             """.trimMargin(), relationshipDeleteEvents)
@@ -838,8 +843,8 @@ class CUDIngestionStrategyTest {
         assertRelationshipEventsContainsKey(deleteRelFooBar, key, key)
         val deleteRelFooBarLabel = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (from:Foo:Bar:Label {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
-                |MATCH (to:Foo:Bar:Label {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (from:Foo:Bar:Label {key: event.from.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (to:Foo:Bar:Label {key: event.to.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.key})
                 |MATCH (from)-[r:MY_REL]->(to)
                 |DELETE r
             """.trimMargin(), relationshipDeleteEvents)
@@ -878,8 +883,8 @@ class CUDIngestionStrategyTest {
         assertEquals(10, relationshipDeleteEvents.map { it.events.size }.sum())
         val deleteRel = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (from) WHERE id(from) = event.from.${CUDIngestionStrategy.ID_KEY}._id
-                |MATCH (to) WHERE id(to) = event.to.${CUDIngestionStrategy.ID_KEY}._id
+                |MATCH (from) WHERE id(from) = event.from.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}._id
+                |MATCH (to) WHERE id(to) = event.to.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}._id
                 |MATCH (from)-[r:MY_REL]->(to)
                 |DELETE r
             """.trimMargin(), relationshipDeleteEvents)
@@ -888,8 +893,8 @@ class CUDIngestionStrategyTest {
         val relKey = "key"
         val deleteRelFooBarLabel = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (from) WHERE id(from) = event.from.${CUDIngestionStrategy.ID_KEY}._id
-                |MATCH (to:Foo:Bar:Label {$relKey: event.to.${CUDIngestionStrategy.ID_KEY}.$relKey})
+                |MATCH (from) WHERE id(from) = event.from.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}._id
+                |MATCH (to:Foo:Bar:Label {$relKey: event.to.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.$relKey})
                 |MATCH (from)-[r:MY_REL]->(to)
                 |DELETE r
             """.trimMargin(), relationshipDeleteEvents)
@@ -933,9 +938,9 @@ class CUDIngestionStrategyTest {
         assertEquals(10, relationshipEvents.map { it.events.size }.sum())
         val createRelFooBar = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (from) WHERE id(from) = event.from.${CUDIngestionStrategy.ID_KEY}._id
+                |MATCH (from) WHERE id(from) = event.from.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}._id
                 |${StreamsUtils.WITH_EVENT_FROM}
-                |MATCH (to) WHERE id(to) = event.to.${CUDIngestionStrategy.ID_KEY}._id
+                |MATCH (to) WHERE id(to) = event.to.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}._id
                 |CREATE (from)-[r:MY_REL]->(to)
                 |SET r = event.properties
             """.trimMargin(), relationshipEvents)
@@ -944,9 +949,9 @@ class CUDIngestionStrategyTest {
         assertRelationshipEventsContainsKey(createRelFooBar, key, key)
         val mergeRelFooBar = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (from) WHERE id(from) = event.from.${CUDIngestionStrategy.ID_KEY}._id
+                |MATCH (from) WHERE id(from) = event.from.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}._id
                 |${StreamsUtils.WITH_EVENT_FROM}
-                |MATCH (to) WHERE id(to) = event.to.${CUDIngestionStrategy.ID_KEY}._id
+                |MATCH (to) WHERE id(to) = event.to.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}._id
                 |MERGE (from)-[r:MY_REL]->(to)
                 |SET r += event.properties
             """.trimMargin(), relationshipEvents)
@@ -954,8 +959,8 @@ class CUDIngestionStrategyTest {
         assertRelationshipEventsContainsKey(mergeRelFooBar, key, key)
         val updateRelFooBar = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (from) WHERE id(from) = event.from.${CUDIngestionStrategy.ID_KEY}._id
-                |MATCH (to) WHERE id(to) = event.to.${CUDIngestionStrategy.ID_KEY}._id
+                |MATCH (from) WHERE id(from) = event.from.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}._id
+                |MATCH (to) WHERE id(to) = event.to.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}._id
                 |MATCH (from)-[r:MY_REL]->(to)
                 |SET r += event.properties
             """.trimMargin(), relationshipEvents)
@@ -1016,7 +1021,7 @@ class CUDIngestionStrategyTest {
 
         val mergeNodeFooBar = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MERGE (n:WellBehaved:`C̸r̵a̵z̵y̵ ̶.̵ ̶ ̴ ̸ ̶ ̶ ̵ ̴L̴a̵b̸e̶l` {${firstKey.quote()}: event.${CUDIngestionStrategy.ID_KEY}.${firstKey.quote()}, ${secondKey.quote()}: event.${CUDIngestionStrategy.ID_KEY}.${secondKey.quote()}})
+                |MERGE (n:WellBehaved:`C̸r̵a̵z̵y̵ ̶.̵ ̶ ̴ ̸ ̶ ̶ ̵ ̴L̴a̵b̸e̶l` {${firstKey.quote()}: event.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.${firstKey.quote()}, ${secondKey.quote()}: event.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.${secondKey.quote()}})
                 |SET n += event.properties
             """.trimMargin(), nodeEvents)
         assertEquals(1, mergeNodeFooBar.events.size)
@@ -1024,7 +1029,7 @@ class CUDIngestionStrategyTest {
 
         val mergeNodeFooBarLabel = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MERGE (n:WellBehaved:`C̸r̵a̵z̵y̵ ̶.̵ ̶ ̴ ̸ ̶ ̶ ̵ ̴L̴a̵b̸e̶l`:Label {${firstKey.quote()}: event.${CUDIngestionStrategy.ID_KEY}.${firstKey.quote()}, ${secondKey.quote()}: event.${CUDIngestionStrategy.ID_KEY}.${secondKey.quote()}})
+                |MERGE (n:WellBehaved:`C̸r̵a̵z̵y̵ ̶.̵ ̶ ̴ ̸ ̶ ̶ ̵ ̴L̴a̵b̸e̶l`:Label {${firstKey.quote()}: event.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.${firstKey.quote()}, ${secondKey.quote()}: event.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.${secondKey.quote()}})
                 |SET n += event.properties
             """.trimMargin(), nodeEvents)
         assertEquals(2, mergeNodeFooBarLabel.events.size)
@@ -1032,7 +1037,7 @@ class CUDIngestionStrategyTest {
 
         val updateNodeFooBar = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (n:WellBehaved:`C̸r̵a̵z̵y̵ ̶.̵ ̶ ̴ ̸ ̶ ̶ ̵ ̴L̴a̵b̸e̶l` {${firstKey.quote()}: event.${CUDIngestionStrategy.ID_KEY}.${firstKey.quote()}, ${secondKey.quote()}: event.${CUDIngestionStrategy.ID_KEY}.${secondKey.quote()}})
+                |MATCH (n:WellBehaved:`C̸r̵a̵z̵y̵ ̶.̵ ̶ ̴ ̸ ̶ ̶ ̵ ̴L̴a̵b̸e̶l` {${firstKey.quote()}: event.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.${firstKey.quote()}, ${secondKey.quote()}: event.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.${secondKey.quote()}})
                 |SET n += event.properties
             """.trimMargin(), nodeEvents)
         assertEquals(1, updateNodeFooBar.events.size)
@@ -1040,7 +1045,7 @@ class CUDIngestionStrategyTest {
 
         val updateNodeFooBarLabel = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (n:WellBehaved:`C̸r̵a̵z̵y̵ ̶.̵ ̶ ̴ ̸ ̶ ̶ ̵ ̴L̴a̵b̸e̶l`:Label {${firstKey.quote()}: event.${CUDIngestionStrategy.ID_KEY}.${firstKey.quote()}, ${secondKey.quote()}: event.${CUDIngestionStrategy.ID_KEY}.${secondKey.quote()}})
+                |MATCH (n:WellBehaved:`C̸r̵a̵z̵y̵ ̶.̵ ̶ ̴ ̸ ̶ ̶ ̵ ̴L̴a̵b̸e̶l`:Label {${firstKey.quote()}: event.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.${firstKey.quote()}, ${secondKey.quote()}: event.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.${secondKey.quote()}})
                 |SET n += event.properties
             """.trimMargin(), nodeEvents)
         assertEquals(1, updateNodeFooBarLabel.events.size)
@@ -1050,7 +1055,7 @@ class CUDIngestionStrategyTest {
         val nodeDeleteEvent = nodeDeleteEvents.first()
         assertEquals("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (n:WellBehaved:`C̸r̵a̵z̵y̵ ̶.̵ ̶ ̴ ̸ ̶ ̶ ̵ ̴L̴a̵b̸e̶l` {${firstKey.quote()}: event.${CUDIngestionStrategy.ID_KEY}.${firstKey.quote()}, ${secondKey.quote()}: event.${CUDIngestionStrategy.ID_KEY}.${secondKey.quote()}})
+                |MATCH (n:WellBehaved:`C̸r̵a̵z̵y̵ ̶.̵ ̶ ̴ ̸ ̶ ̶ ̵ ̴L̴a̵b̸e̶l` {${firstKey.quote()}: event.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.${firstKey.quote()}, ${secondKey.quote()}: event.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.${secondKey.quote()}})
                 |DETACH DELETE n
             """.trimMargin(), nodeDeleteEvent.query)
         assertEquals(1, nodeDeleteEvent.events.size)
@@ -1103,7 +1108,7 @@ class CUDIngestionStrategyTest {
 
         val mergeNode = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MERGE (n {${key.quote()}: event.${CUDIngestionStrategy.ID_KEY}.${key.quote()}})
+                |MERGE (n {${key.quote()}: event.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.${key.quote()}})
                 |SET n += event.properties
             """.trimMargin(), nodeEvents)
         assertEquals(3, mergeNode.events.size)
@@ -1111,7 +1116,7 @@ class CUDIngestionStrategyTest {
 
         val updateNode = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (n {${key.quote()}: event.${CUDIngestionStrategy.ID_KEY}.${key.quote()}})
+                |MATCH (n {${key.quote()}: event.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.${key.quote()}})
                 |SET n += event.properties
             """.trimMargin(), nodeEvents)
         assertEquals(2, updateNode.events.size)
@@ -1121,7 +1126,7 @@ class CUDIngestionStrategyTest {
         val nodeDeleteEvent = nodeDeleteEvents.first()
         assertEquals("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (n {${key.quote()}: event.${CUDIngestionStrategy.ID_KEY}.${key.quote()}})
+                |MATCH (n {${key.quote()}: event.${org.neo4j.graph_integration.strategy.cud.CUDIngestionStrategy.ID_KEY}.${key.quote()}})
                 |DETACH DELETE n
             """.trimMargin(), nodeDeleteEvent.query)
         assertEquals(1, nodeDeleteEvent.events.size)

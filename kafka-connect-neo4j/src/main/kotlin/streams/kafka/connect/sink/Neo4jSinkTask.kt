@@ -1,17 +1,15 @@
 package streams.kafka.connect.sink
 
 import com.github.jcustenborder.kafka.connect.utils.VersionUtil
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
 import org.apache.kafka.connect.sink.SinkRecord
 import org.apache.kafka.connect.sink.SinkTask
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import streams.extensions.asProperties
-import streams.service.errors.*
+import streams.service.errors.ErrorData
+import streams.service.errors.ErrorService
+import streams.service.errors.KafkaErrorService
 import streams.utils.StreamsUtils
-import java.lang.Exception
-import java.util.*
 
 
 class Neo4jSinkTask : SinkTask() {
