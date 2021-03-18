@@ -169,6 +169,11 @@
             <artifactId>neo4j-configuration-lifecycle</artifactId>
             <version>${neo4j.configuration-lifecycle.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.github.conker84.graph-integration</groupId>
+            <artifactId>graph-integration-jvm</artifactId>
+            <version>47f0b3495e</version>
+        </dependency>
 
         <dependency>
             <groupId>org.neo4j</groupId>
